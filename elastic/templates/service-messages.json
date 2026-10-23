@@ -11,9 +11,9 @@
         "channel": {"type": "keyword"},
         "track_id": {"type": "keyword"},
         "battle_id": {"type": "keyword"},
+        "trace_id": {"type": "keyword"},
         "span_id": {"type": "keyword"},
-        "parent_span_id": {"type": "keyword"},
-        "payload": {"type": "object"}
+        "payload": {"type": "flattened"}
       }
     }
   }

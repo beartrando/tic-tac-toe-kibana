@@ -12,8 +12,7 @@ kibana/
 ├── elastic/
 │   ├── apply-templates.sh       # идемпотентно применяет index templates в Elasticsearch
 │   └── templates/
-│       ├── service-messages.json
-│       └── battle-operations.json
+│       └── service-messages.json
 └── saved-objects/
     └── battles.ndjson           # Data View, поиски, визуализации, дашборд
 ```
@@ -40,13 +39,13 @@ make kibana-export
 
 ## Что показывает дашборд `Battles`
 
-Data View `battle-trace` = `service-messages,battle-operations`, time field `@timestamp`.
+Data View `battle-trace` = `service-messages`, time field `@timestamp`.
 
 | панель | что показывает |
 |---|---|
 | Controls | фильтры `battle_id`, `service`, `transport` |
 | Battles timeline | гистограмма событий по времени с разбивкой по `service` |
-| Messages | таблица транспортных сообщений: время, сервис, направление, транспорт, канал, `track_id`, `battle_id`, payload |
+| Messages | таблица транспортных сообщений: время, сервис, направление, транспорт, канал, `track_id`, `battle_id`, `trace_id`, `span_id`, payload |
 | Operations | группировка по `track_id`: время запроса/ответа и число сообщений одной операции |
 
 ## Runtime-поля
@@ -69,9 +68,23 @@ Data View `battle-trace` = `service-messages,battle-operations`, time field `@ti
 `text` + `.keyword`, и агрегации в дашборде ломаются). Шаблон действует только на
 новые индексы: существующий индекс нужно пересоздать (в dev данные логов не жалко).
 
+`payload` объявлен как `flattened`, а не `object`: сервисы пишут в него разные формы
+(proto-объекты, доменные сущности с value-object'ами, сырые websocket-сообщения), и
+при динамическом mapping одно и то же поле получает разные типы — например
+`payload.id` как `{"value": "…"}` и как `"…"`. Elasticsearch не может менять тип поля
+и отклоняет такие документы целиком (`document_parsing_exception`). `flattened`
+индексирует все вложенные значения как keywords и принимает любую форму.
+
+Применить шаблон и пересоздать индекс:
+
+```bash
+RECREATE_INDICES=true bash kibana/elastic/apply-templates.sh
+```
+
 ## Ограничения
 
-- Индекс `battle-operations` сейчас не пишется (логгер операций движка удалён при
-  рефакторинге), поэтому панель Operations построена по `service-messages` и `track_id`.
-- Порты `9200`/`5601` публикуются только в dev (`docker-compose.yml.dist`); в deploy
-  они закомментированы, дашборд импортируется внутри сети.
+- Панель Operations построена по `service-messages` и `track_id`.
+- `trace_id`/`span_id` заполняются из активного OpenTelemetry-спана; по `trace_id`
+  можно открыть полный трейс в Grafana Tempo.
+- Порты `9200`/`5601` публикуются в локальном `docker-compose.yml`; в `.dist`
+  дашборд импортируется внутри сети.

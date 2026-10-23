@@ -17,7 +17,7 @@ if ! curl -fsS "$ES_URL/_cluster/health" >/dev/null 2>&1; then
 fi
 
 if [ "${RECREATE_INDICES:-false}" = "true" ]; then
-    for index in service-messages battle-operations; do
+    for index in service-messages; do
         code="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$ES_URL/$index")"
         if [ "$code" = "200" ]; then
             echo "🗑  индекс $index удалён"
@@ -30,7 +30,7 @@ if [ "${RECREATE_INDICES:-false}" = "true" ]; then
     done
 fi
 
-for template in service-messages battle-operations; do
+for template in service-messages; do
     file="$TEMPLATES_DIR/$template.json"
     if [ ! -f "$file" ]; then
         echo "❌ нет файла шаблона: $file" >&2

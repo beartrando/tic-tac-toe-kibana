@@ -10,6 +10,10 @@ set -euo pipefail
 
 KIBANA_URL="${KIBANA_URL:-http://localhost:5601}"
 ES_URL="${ES_URL:-http://localhost:9200}"
+KIBANA_USER="${KIBANA_USER:-elastic}"
+KIBANA_PASS="${KIBANA_PASS:-${ELASTIC_PASSWORD:-changeme}}"
+ES_USER="${ES_USER:-elastic}"
+ES_PASS="${ES_PASS:-${ELASTIC_PASSWORD:-changeme}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NDJSON="$SCRIPT_DIR/saved-objects/battles.ndjson"
 
@@ -21,7 +25,7 @@ fi
 echo "⏳ Ожидание Kibana ($KIBANA_URL)..."
 ready="false"
 for _ in $(seq 1 60); do
-    if curl -fsS "$KIBANA_URL/api/status" 2>/dev/null | grep -q '"level":"available"'; then
+    if curl -fsS -u "${KIBANA_USER}:${KIBANA_PASS}" "$KIBANA_URL/api/status" 2>/dev/null | grep -q '"level":"available"'; then
         ready="true"
         break
     fi
@@ -33,7 +37,7 @@ if [ "$ready" != "true" ]; then
 fi
 
 if [ "${SKIP_TEMPLATES:-false}" != "true" ]; then
-    ES_URL="$ES_URL" "$SCRIPT_DIR/elastic/apply-templates.sh"
+    ES_URL="$ES_URL" ES_USER="$ES_USER" ES_PASS="$ES_PASS" "$SCRIPT_DIR/elastic/apply-templates.sh"
 fi
 
 # Удаляем прежние версии объектов с теми же id (в т.ч. старые типы):
@@ -51,12 +55,12 @@ legacy_objects=(
 for object in "${legacy_objects[@]}"; do
     type="${object%%:*}"
     id="${object#*:}"
-    curl -sS -o /dev/null -X DELETE "$KIBANA_URL/api/saved_objects/$type/$id" \
+    curl -sS -u "${KIBANA_USER}:${KIBANA_PASS}" -o /dev/null -X DELETE "$KIBANA_URL/api/saved_objects/$type/$id" \
         -H "kbn-xsrf: true" || true
 done
 
 echo "📥 Импорт saved objects: $NDJSON"
-response="$(curl -fsS -X POST "$KIBANA_URL/api/saved_objects/_import?overwrite=true" \
+response="$(curl -fsS -u "${KIBANA_USER}:${KIBANA_PASS}" -X POST "$KIBANA_URL/api/saved_objects/_import?overwrite=true" \
     -H "kbn-xsrf: true" \
     -F "file=@$NDJSON")"
 

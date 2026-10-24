@@ -45,8 +45,8 @@ Data View `battle-trace` = `service-messages`, time field `@timestamp`.
 |---|---|
 | Controls | фильтры `battle_id`, `service`, `transport` |
 | Battles timeline | гистограмма событий по времени с разбивкой по `service` |
-| Messages | таблица транспортных сообщений: время, сервис, направление, транспорт, канал, `track_id`, `battle_id`, `trace_id`, `span_id`, payload |
-| Operations | группировка по `track_id`: время запроса/ответа и число сообщений одной операции |
+| Messages | таблица транспортных сообщений: время, сервис, направление, транспорт, канал, `battle_id`, `trace_id`, `span_id`, payload |
+| Operations | группировка по `trace_id`: время запроса/ответа и число сообщений одной операции |
 
 ## Runtime-поля
 
@@ -83,7 +83,7 @@ RECREATE_INDICES=true bash kibana/elastic/apply-templates.sh
 
 ## Ограничения
 
-- Панель Operations построена по `service-messages` и `track_id`.
+- Панель Operations построена по `service-messages` и `trace_id`.
 - `trace_id`/`span_id` заполняются из активного OpenTelemetry-спана; по `trace_id`
   можно открыть полный трейс в Grafana Tempo.
 - Порты `9200`/`5601` публикуются в локальном `docker-compose.yml`; в `.dist`

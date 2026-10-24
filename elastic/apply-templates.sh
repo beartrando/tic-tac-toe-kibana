@@ -8,17 +8,20 @@
 set -euo pipefail
 
 ES_URL="${ES_URL:-http://localhost:9200}"
+ES_USER="${ES_USER:-elastic}"
+ES_PASS="${ES_PASS:-${ELASTIC_PASSWORD:-changeme}}"
+CURL_AUTH=(-u "${ES_USER}:${ES_PASS}")
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATES_DIR="$SCRIPT_DIR/templates"
 
-if ! curl -fsS "$ES_URL/_cluster/health" >/dev/null 2>&1; then
+if ! curl -fsS "${CURL_AUTH[@]}" "$ES_URL/_cluster/health" >/dev/null 2>&1; then
     echo "❌ Elasticsearch недоступен: $ES_URL" >&2
     exit 1
 fi
 
 if [ "${RECREATE_INDICES:-false}" = "true" ]; then
     for index in service-messages; do
-        code="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE "$ES_URL/$index")"
+        code="$(curl -sS "${CURL_AUTH[@]}" -o /dev/null -w '%{http_code}' -X DELETE "$ES_URL/$index")"
         if [ "$code" = "200" ]; then
             echo "🗑  индекс $index удалён"
         elif [ "$code" = "404" ]; then
@@ -37,7 +40,7 @@ for template in service-messages; do
         exit 1
     fi
 
-    curl -fsS -X PUT "$ES_URL/_index_template/${template}-template" \
+    curl -fsS "${CURL_AUTH[@]}" -X PUT "$ES_URL/_index_template/${template}-template" \
         -H "Content-Type: application/json" \
         --data-binary "@$file" >/dev/null
     echo "✅ index template ${template}-template применён"
